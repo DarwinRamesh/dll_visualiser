@@ -42,10 +42,10 @@ linked_list_t* init_list();
 void append_list(linked_list_t* dll, int data);
 void print_list_all(linked_list_t* dll); 
 void print_reverse_all(linked_list_t* dll);
-void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE], struct fonts ft);
+void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE], struct fonts ft, linked_list_t* list1);
 void nodeElState(int index, nodeRender* nr);
-void renderNode(int index, nodeRender* nr, struct fonts ft);
-void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* nodesArr[MAX_NODE]);
+void renderNode(int index, nodeRender* nr, struct fonts ft, linked_list_t* list1);
+void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* nodesArr[MAX_NODE], linked_list_t* list);
 
 int main(){
 	struct screenDimensions sd;
@@ -58,24 +58,25 @@ int main(){
 	nr.paddingBdr = 0.0f;
 	nr.scaleStack = 30;
 
-	sd.sw = 1200;
+	sd.sw = 1425;
 	sd.sh = 800;
 	sd.nodeRndrCount = 0;
 	nodeRender* nodesArr [MAX_NODE] = {0};
 
 	InitWindow(sd.sw, sd.sh, "DLL");
 	SetTargetFPS(144);
-	ft.light = LoadFontEx("Ubuntu-Light.ttf", 22, 0, 0);
+	Font light = LoadFontEx("Ubuntu-Light.ttf", 22, 0, 0);
 	ft.lights = LoadFontEx("Ubuntu-Light.ttf", 14, 0, 0);
+	linked_list_t* list1 = init_list();
 
 	while(!WindowShouldClose()){
-		gameState(&sd, &nr, nodesArr);
+		gameState(&sd, &nr, nodesArr, list1);
 		BeginDrawing();
 			ClearBackground(LIGHTGRAY);
-			gameRender(sd, nr, nodesArr, ft);
-			DrawTextEx(ft.light, TextFormat("ScreenWidth : %d", GetScreenWidth()), (Vector2){10, 440}, 22, 1.5f, BLACK);
-			DrawTextEx(ft.light, TextFormat("Current FPS : %d", GetFPS()), (Vector2){10, 462}, 22, 1.5f, BLACK);
-			DrawTextEx(ft.light, TextFormat("Current nr.scaleGaps : %f", nr.scaleGaps), (Vector2){10, 484}, 22, 1.5f, BLACK);
+			DrawTextEx(light, TextFormat("ScreenWidth : %d", GetScreenWidth()), (Vector2){10, 440}, 22, 1.5f, BLACK);
+			DrawTextEx(light, TextFormat("Current FPS : %d", GetFPS()), (Vector2){10, 462}, 22, 1.5f, BLACK);
+			DrawTextEx(light, TextFormat("Delta Time : %f", GetFrameTime()), (Vector2){10, 484}, 22, 1.5f, BLACK);
+			gameRender(sd, nr, nodesArr, ft, list1);
 		EndDrawing();
 	}
 
@@ -96,6 +97,7 @@ void append_list(linked_list_t* dll, int data){
 		node_t* new_head = (node_t*)malloc(sizeof(node_t));
 		new_head->data = data;
 		new_head->next = NULL;
+		new_head->prev = NULL;
 		dll->head = new_head;
 		printf("[TASK]Head created...\n");
 		if(dll->head != NULL){
@@ -151,19 +153,23 @@ void print_reverse_all(linked_list_t* dll){
 	}
 }
 
-void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE], struct fonts ft){
+void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE], struct fonts ft, linked_list_t* list1){
 	if(nodesArr[0] == NULL){
+		return;
+	}
+	if((sd.nodeRndrCount > MAX_NODE)){
 		return;
 	}
 	for(int i = 0; i < sd.nodeRndrCount; i++){
 		nodeElState(i, nodesArr[i]);
-		renderNode(i, nodesArr[i], ft);
+		renderNode(i, nodesArr[i], ft, list1);
 		}
 }
 
-void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* nodesArr[MAX_NODE]){
+void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* nodesArr[MAX_NODE], linked_list_t* list1){
 	if(sd->nodeRndrCount > MAX_NODE){
 		sd->nodeRndrCount = MAX_NODE;
+		return;
 	}
 	if(IsKeyPressed(KEY_N)){
 		sd->nodeRndrCount += 1;
@@ -171,27 +177,32 @@ void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* n
 			nodeRender* newnode = (nodeRender*)malloc(sizeof(nodeRender));
 			nodesArr[sd->nodeRndrCount - 1] = newnode;
 		}
+		append_list(list1, sd->nodeRndrCount * 10);
 	}
 }
 
 void nodeElState(int index, nodeRender* nr){
 	nr->nodeIndex = index;
 	nr->headBounds = (Rectangle){nr->paddingBdr, nr->paddingBdr, nr->elWidth, nr->elWidth};
-	nr->elWidth = 60;
+	nr->elWidth = 160;
 	nr->elHeight = 20;
 	nr->scaleGaps = nr->elWidth + 20;
 	nr->paddingBdr = 10.0f;
 	nr->scaleStack = 30;
 }
 
-void renderNode(int index, nodeRender* nr, struct fonts ft){
+void renderNode(int index, nodeRender* nr, struct fonts ft, linked_list_t* list1){
+	node_t* cur = list1->head;
+	for(int i = 0; i < index; i++){
+		cur = cur->next;
+	}
 	Rectangle newNodeNext = {(nr->scaleGaps * index) + nr->paddingBdr, nr->paddingBdr, nr->elWidth, nr->elHeight};
 	Rectangle newNodeData = {(nr->scaleGaps * index) + nr->paddingBdr, nr->scaleStack, nr->elWidth, nr->elHeight}; 
 	Rectangle newNodePrev = {(nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - (10.0f), nr->elWidth, nr->elHeight}; 
 	DrawRectangleRec(newNodeNext, DARKGRAY);
 	DrawRectangleRec(newNodeData, BLACK);
 	DrawRectangleRec(newNodePrev, DARKGRAY);
-	DrawTextEx(ft.lights, "NEXT", (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, nr->paddingBdr}, 14, 1.5f, GRAY);
-	DrawTextEx(ft.lights, "DATA", (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, nr->scaleStack}, 14, 1.5f, GRAY);
-	DrawTextEx(ft.lights, "PREV", (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - 10.0f}, 14, 1.5f, GRAY);
+	DrawTextEx(ft.lights, TextFormat("NODE:%p", cur), (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, nr->paddingBdr}, 14, 1.5f, LIGHTGRAY);
+	DrawTextEx(ft.lights, TextFormat("NEXT:%p", cur->next), (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, nr->scaleStack}, 14, 1.5f, LIGHTGRAY);
+	DrawTextEx(ft.lights, TextFormat("PREV:%p", cur->prev), (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - 10.0f}, 14, 1.5f, LIGHTGRAY);
 }
