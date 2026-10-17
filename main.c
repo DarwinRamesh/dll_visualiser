@@ -33,19 +33,30 @@ typedef struct nodeRender{
 	int nodeIndex;
 }nodeRender;
 
+struct fonts{
+	Font light;
+	Font lights;
+}fonts;
+
 linked_list_t* init_list();
 void append_list(linked_list_t* dll, int data);
 void print_list_all(linked_list_t* dll); 
 void print_reverse_all(linked_list_t* dll);
-void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE]);
+void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE], struct fonts ft);
 void nodeElState(int index, nodeRender* nr);
-void renderNode(int index, nodeRender* nr);
+void renderNode(int index, nodeRender* nr, struct fonts ft);
 void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* nodesArr[MAX_NODE]);
 
 int main(){
 	struct screenDimensions sd;
 	struct nodeRender nr;
+	struct fonts ft;
 	nr.nodeIndex = 1;
+	nr.elWidth = 60;
+	nr.elHeight = 20;
+	nr.scaleGaps = nr.elWidth + 20;
+	nr.paddingBdr = 0.0f;
+	nr.scaleStack = 30;
 
 	sd.sw = 1200;
 	sd.sh = 800;
@@ -54,12 +65,17 @@ int main(){
 
 	InitWindow(sd.sw, sd.sh, "DLL");
 	SetTargetFPS(144);
+	ft.light = LoadFontEx("Ubuntu-Light.ttf", 22, 0, 0);
+	ft.lights = LoadFontEx("Ubuntu-Light.ttf", 14, 0, 0);
 
 	while(!WindowShouldClose()){
 		gameState(&sd, &nr, nodesArr);
 		BeginDrawing();
-			ClearBackground(DARKGRAY);
-			gameRender(sd, nr, nodesArr);
+			ClearBackground(LIGHTGRAY);
+			gameRender(sd, nr, nodesArr, ft);
+			DrawTextEx(ft.light, TextFormat("ScreenWidth : %d", GetScreenWidth()), (Vector2){10, 440}, 22, 1.5f, BLACK);
+			DrawTextEx(ft.light, TextFormat("Current FPS : %d", GetFPS()), (Vector2){10, 462}, 22, 1.5f, BLACK);
+			DrawTextEx(ft.light, TextFormat("Current nr.scaleGaps : %f", nr.scaleGaps), (Vector2){10, 484}, 22, 1.5f, BLACK);
 		EndDrawing();
 	}
 
@@ -135,47 +151,47 @@ void print_reverse_all(linked_list_t* dll){
 	}
 }
 
-void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE]){
+void gameRender(struct screenDimensions sd, struct nodeRender nr, nodeRender* nodesArr[MAX_NODE], struct fonts ft){
 	if(nodesArr[0] == NULL){
 		return;
 	}
 	for(int i = 0; i < sd.nodeRndrCount; i++){
 		nodeElState(i, nodesArr[i]);
-		renderNode(i, nodesArr[i]);
-	}
+		renderNode(i, nodesArr[i], ft);
+		}
 }
 
 void gameState(struct screenDimensions* sd, struct nodeRender *nr, nodeRender* nodesArr[MAX_NODE]){
-	if(IsKeyPressed(KEY_W)){
-	sd->nodeRndrCount += 1;
-		for(int i = 0; i < sd->nodeRndrCount; i++){
-			nodeRender* newnode = (nodeRender*)malloc(sizeof(nodeRender));
-			nodesArr[i] = newnode;
-		}
-	}
 	if(sd->nodeRndrCount > MAX_NODE){
 		sd->nodeRndrCount = MAX_NODE;
+	}
+	if(IsKeyPressed(KEY_N)){
+		sd->nodeRndrCount += 1;
+		for(int i = 0; i < sd->nodeRndrCount; i++){
+			nodeRender* newnode = (nodeRender*)malloc(sizeof(nodeRender));
+			nodesArr[sd->nodeRndrCount - 1] = newnode;
+		}
 	}
 }
 
 void nodeElState(int index, nodeRender* nr){
 	nr->nodeIndex = index;
+	nr->headBounds = (Rectangle){nr->paddingBdr, nr->paddingBdr, nr->elWidth, nr->elWidth};
 	nr->elWidth = 60;
 	nr->elHeight = 20;
 	nr->scaleGaps = nr->elWidth + 20;
 	nr->paddingBdr = 10.0f;
 	nr->scaleStack = 30;
-	nr->headBounds = (Rectangle){nr->paddingBdr, nr->paddingBdr, nr->elWidth, nr->elWidth};
 }
 
-void renderNode(int index, nodeRender* nr){
+void renderNode(int index, nodeRender* nr, struct fonts ft){
 	Rectangle newNodeNext = {(nr->scaleGaps * index) + nr->paddingBdr, nr->paddingBdr, nr->elWidth, nr->elHeight};
 	Rectangle newNodeData = {(nr->scaleGaps * index) + nr->paddingBdr, nr->scaleStack, nr->elWidth, nr->elHeight}; 
-	Rectangle newNodePrev = {(nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - 10.0f, nr->elWidth, nr->elHeight}; 
-	DrawRectangleRec(newNodeNext, WHITE);
-	DrawRectangleRec(newNodeData, GRAY);
-	DrawRectangleRec(newNodePrev, WHITE);
-	DrawText("NEXT", (nr->scaleGaps * index) + nr->paddingBdr, nr->paddingBdr, 14, BLACK);
-	DrawText("DATA", (nr->scaleGaps * index) + nr->paddingBdr, nr->scaleStack, 14, BLACK);
-	DrawText("PREV", (nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - 10.0f, 14, BLACK);
+	Rectangle newNodePrev = {(nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - (10.0f), nr->elWidth, nr->elHeight}; 
+	DrawRectangleRec(newNodeNext, DARKGRAY);
+	DrawRectangleRec(newNodeData, BLACK);
+	DrawRectangleRec(newNodePrev, DARKGRAY);
+	DrawTextEx(ft.lights, "NEXT", (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, nr->paddingBdr}, 14, 1.5f, GRAY);
+	DrawTextEx(ft.lights, "DATA", (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, nr->scaleStack}, 14, 1.5f, GRAY);
+	DrawTextEx(ft.lights, "PREV", (Vector2){(nr->scaleGaps * index) + nr->paddingBdr, (nr->scaleStack * 2) - 10.0f}, 14, 1.5f, GRAY);
 }
